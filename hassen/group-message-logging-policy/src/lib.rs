@@ -75,7 +75,7 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
     let trace_id = String::from_utf8(stream.read_property(&["request", "id"]).unwrap_or_default()).unwrap_or_default();
 	
     let url = Url::parse(&modified_url).unwrap();
-    let port = url.port_or_known_default().unwrap();
+   //let port = url.port_or_known_default().unwrap();
 
     let request_data_value = json!({ 
         "http.request.referrer": modified_url,
@@ -97,8 +97,8 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
         "client.user.jwt.audience": audience,
         "client.user.jwt.issuer": issuer,
 		"tls.version": tls_version,
-        "traceId": trace_id,
-        "port":port
+        "traceId": trace_id
+        //"port":port
 });
     Flow::Continue(request_data_value.to_string())
     
@@ -153,9 +153,7 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
             "event.end": formatted_end_time,
             "event.duration": response_time,
             "http.response.body.bytes": body_bytes,
-           // "rate_limit_exceed": "Rate limit is exceeded for the service, please try after sometime.",
             "level": level_val
-            // "error.message": body_string
          });
       }
       
