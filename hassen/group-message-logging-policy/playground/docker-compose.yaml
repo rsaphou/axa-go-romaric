@@ -1,0 +1,10 @@
+# Copyright 2024 AXA. All rights reserved.
+version: "3.3"
+
+services:
+  local-flex:
+    image: mulesoft/flex-gateway:1.8.0 
+    ports:
+      - 8085:8084
+    volumes:
+      - ./config:/usr/local/share/mulesoft/flex-gateway/conf.d/
