@@ -1,14 +1,14 @@
 # Copyright 2023 Salesforce, Inc. All rights reserved.
 [package]
 name = "group_payload_logging_policy"
-version = "1.0.1"
+version = "1.1.0"
 rust-version = "1.74.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.anypoint]
-group_id = "c4c35be9-c141-4844-8bb1-85837fdd7ec1"
+group_id = "fa8e8050-81d8-477a-a4c3-0c4f25df8525"
 definition_asset_id = "group-payload-logging-policy"
 implementation_asset_id = "group-payload-logging-policy-flex"
 

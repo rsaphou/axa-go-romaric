@@ -99,7 +99,7 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         }
 
         if has_error {
-            logger::error!("[errorLog] {}", log_data);
+            logger::error!("[accessLog] {}", log_data);
         } else {
             logger::info!("[accessLog] {}", log_data);
         }
