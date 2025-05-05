@@ -1,0 +1,101 @@
+Création de la CI sur Rust 
+
+- Créer la Task
+- Créer la Pipeline
+- Créer la Pipeline Run
+        #   apiVersion: tekton.dev/v1
+        # kind: Task
+        # metadata:
+        #   name: install-tools
+        # spec:
+        #   steps:
+        #     - name: setup-and-install
+        #       # image: node:18
+        #       image: registry.access.redhat.com/ubi8/nodejs-20
+        #       #securityContext:
+        #       #  runAsUser: 0
+        #       script: |
+        #         #!/bin/sh
+        #         set -e
+        #         export HOME=/tekton/home
+                
+        #         echo "npm installation step"
+        #         # Set npm global path to writable directory
+        #         mkdir -p "$HOME/.npm-global"
+        #         npm config set prefix "$HOME/.npm-global"
+        #         export PATH="$HOME/.npm-global/bin:$PATH"
+
+        #         # Install Anypoint CLI
+        #         npm install -g anypoint-cli-v4
+
+        #         # Verify installation
+        #         node -v
+        #         npm -v
+        #         anypoint-cli-v4 --version
+        #         echo "✅ Node: $(node -v)"
+        #         echo "✅ NPM: $(npm -v)"
+        #         echo "✅ Git: $(git --version)"
+        #         echo "✅ Curl: $(curl --version | head -n 1)"
+        #         echo "✅ Anypoint CLI: $(anypoint-cli-v4 --version)"
+
+        #     - name: install-rust
+        #       image: registry.access.redhat.com/ubi8/nodejs-20
+        #       script: |
+        #         #!/bin/sh
+        #         set -e
+        #         export HOME=/tekton/home  
+        #         echo "Rust installation step"
+
+        #         echo "🔧 Using custom CA cert"
+        #         export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
+
+        #         if ! command -v rustc &> /dev/null
+        #         then
+        #           echo "Rust could not be found, installing it..."
+        #           # Install Rust non-interactively
+        #           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+        #           # Source the Rust environment (non-interactive)
+        #           source $HOME/.cargo/env
+        #         fi
+        #         echo "✅ Rust: $(rustc --version)"
+        #       volumeMounts:
+        #         - name: custom-ca
+        #           mountPath: /etc/ssl/custom-ca
+        #           readOnly: true
+        #       env:
+        #         - name: SSL_CERT_FILE
+        #           value: /etc/ssl/custom-ca/ca.crt
+        #   volumes:
+        #     - name: custom-ca
+        #       configMap:
+        #         name: rust-certificate
+
+        # ---
+        # apiVersion: tekton.dev/v1
+        # kind: Pipeline
+        # metadata:
+        #   name: tools-install-pipeline
+        # spec:
+        #   tasks:
+        #     - name: install-all
+        #       taskRef:
+        #         name: install-tools
+
+        # ---
+        # apiVersion: tekton.dev/v1
+        # kind: PipelineRun
+        # metadata:
+        #   name: tools-install-run
+        # spec:
+        #   taskRunTemplate:
+        #         serviceAccountName: sa-docker
+        #   pipelineRef:
+        #     name: tools-install-pipeline
+
+
+- Créer des configs Map avec les différents certificat de Rust 
+  Afficher les certificats de Rust 
+    "openssl s_client -showcerts -servername static.rust-lang.org static.rust-lang.org:443"
+    "openssl s_client -showcerts -servername sh.rustup.rs -connect sh.rustup.rs:443"
+  Créer la configmap avec tous les certificat 
+   "oc create configmap rust-certificate --from-file=ca.crt=rust-certificate.pem"

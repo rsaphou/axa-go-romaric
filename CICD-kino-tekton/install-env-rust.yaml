@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-tools
+spec:
+  steps:
+    - name: install-node-npm
+      image: node:18
+      script: |
+        #!/bin/sh
+        echo "Node.js version: $(node -v)"
+        echo "npm version: $(npm -v)"
+        mkdir -p ~/.npm-global
+        npm config set prefix '~/.npm-global'
+        export PATH="$HOME/.npm-global/bin:$PATH"
+
+    - name: install-anypoint-cli
+      image: node:18
+      script: |
+        #!/bin/sh
+        mkdir -p ~/.npm-global
+        npm config set prefix '~/.npm-global'
+        export PATH="$HOME/.npm-global/bin:$PATH"
+        echo "🔧 Using custom CA cert"
+        export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
+        npm install -g anypoint-cli-v4
+        anypoint-cli --version
+      volumeMounts:
+        - name: custom-ca
+          mountPath: /etc/ssl/custom-ca
+          readOnly: true
+      env:
+        - name: SSL_CERT_FILE
+          value: /etc/ssl/custom-ca/ca.crt
+
+  volumes:
+    - name: custom-ca
+      configMap:
+        name: rust-certificate

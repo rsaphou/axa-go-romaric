@@ -1,0 +1,96 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-tools
+spec:
+  steps:
+    - name: setup-and-install
+      # image: node:18
+      image: registry.access.redhat.com/ubi8/nodejs-20
+      #securityContext:
+      #  runAsUser: 0
+      script: |
+        #!/bin/sh
+        set -e
+        export HOME=/tekton/home
+        
+        echo "npm installation step"
+        # Set npm global path to writable directory
+        mkdir -p "$HOME/.npm-global"
+        npm config set prefix "$HOME/.npm-global"
+        export PATH="$HOME/.npm-global/bin:$PATH"
+
+        # Install Anypoint CLI
+        npm install -g anypoint-cli-v4
+
+        echo "Installation pdk"
+        anypoint-cli-v4 plugins:install anypoint-cli-pdk-plugin
+
+        # Verify installation
+        node -v
+        npm -v
+        anypoint-cli-v4 --version
+        echo "✅ Node: $(node -v)"
+        echo "✅ NPM: $(npm -v)"
+        echo "✅ Git: $(git --version)"
+        echo "✅ Curl: $(curl --version | head -n 1)"
+        echo "✅ Anypoint CLI: $(anypoint-cli-v4 --version)"
+
+    - name: install-rust
+      image: registry.access.redhat.com/ubi8/nodejs-20
+      script: |
+        #!/bin/sh
+        set -e
+        export HOME=/tekton/home  
+        echo "Rust installation step"
+
+        echo "🔧 Using custom CA cert"
+        export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
+
+        if ! command -v rustc &> /dev/null
+        then
+          echo "Rust could not be found, installing it..."
+          # Install Rust non-interactively
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+          # Source the Rust environment (non-interactive)
+          source $HOME/.cargo/env
+        fi
+        echo "✅ Rust: $(rustc --version)"
+        rustup default 1.83.0
+        echo "Rust version 1.8.3 set"
+        rustup target add wasm32-wasi
+        echo "Rust WASI set"
+        cargo install --locked cargo-generate@0.22.0
+      volumeMounts:
+        - name: custom-ca
+          mountPath: /etc/ssl/custom-ca
+          readOnly: true
+      env:
+        - name: SSL_CERT_FILE
+          value: /etc/ssl/custom-ca/ca.crt
+  volumes:
+    - name: custom-ca
+      configMap:
+        name: rust-certificate
+
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: tools-install-pipeline
+spec:
+  tasks:
+    - name: install-all
+      taskRef:
+        name: install-tools
+
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: tools-install-run
+spec:
+  taskRunTemplate:
+        serviceAccountName: sa-docker
+  pipelineRef:
+    name: tools-install-pipeline

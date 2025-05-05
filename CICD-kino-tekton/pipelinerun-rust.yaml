@@ -1,0 +1,9 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: tools-install-run
+spec:
+  taskRunTemplate:
+        serviceAccountName: sa-docker
+  pipelineRef:
+    name: tools-install-pipeline

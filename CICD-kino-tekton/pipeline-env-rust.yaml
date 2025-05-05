@@ -1,0 +1,9 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: tools-install-pipeline
+spec:
+  tasks:
+    - name: install-all
+      taskRef:
+        name: install-tools
