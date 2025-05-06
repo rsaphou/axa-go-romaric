@@ -1,0 +1,11 @@
+FROM node:20
+
+USER root
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git curl ca-certificates \
+ && npm install -g anypoint-cli-v4 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* /tmp/* /root/.npm
+
+USER node

@@ -1,5 +1,5 @@
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
   name: pvc-large-storage
 spec:
@@ -18,45 +18,34 @@ spec:
     - name: shared-home
   steps:
     - name: setup-and-install
-      # image: node:18
       image: registry.access.redhat.com/ubi8/nodejs-20
-      #securityContext:
-      #  runAsUser: 0
       script: |
         #!/bin/sh
         set -e
         export HOME=/workspace/shared-home
-        
-        echo "npm installation step"
-        # Set npm global path to writable directory
-        echo "ls du dossier courant"
-        ls .
-        echo "ls /workspace/shared-home"
-        ls /workspace/shared-home
-        cd /workspace/shared-home/
-        echo "creation du cd /workspace/shared-home/npm-global"
-        mkdir npm-global
-        echo "ls après creation"
-        ls .
-        cd ../..
-        npm config set prefix /workspace/shared-home/npm-global
-        export PATH="$HOME/npm-global/bin:$PATH"
 
-        # Install Anypoint CLI
+        echo "📁 Listing shared-home contents:"
+        ls -al /workspace/shared-home
+        
+
+        echo "📁 Creating npm-global directory"
+        mkdir -p /workspace/shared-home/npm-global
+        ls -al /workspace/shared-home/npm-global
+
+        echo "📦 Configuring npm"
+        npm config set prefix /workspace/shared-home/npm-global
+        export PATH="/workspace/shared-home/npm-global/bin:$PATH"
+
+        echo "⬇️ Installing Anypoint CLI"
         npm install -g anypoint-cli-v4
 
-        echo "Installation pdk"
+        echo "🔌 Installing Anypoint plugin"
         anypoint-cli-v4 plugins:install anypoint-cli-pdk-plugin
 
-        # Verify installation
+        echo "✅ Versions:"
         node -v
         npm -v
         anypoint-cli-v4 --version
-        echo "✅ Node: $(node -v)"
-        echo "✅ NPM: $(npm -v)"
-        echo "✅ Git: $(git --version)"
-        echo "✅ Curl: $(curl --version | head -n 1)"
-        echo "✅ Anypoint CLI: $(anypoint-cli-v4 --version)"
 
     - name: install-rust
       image: registry.access.redhat.com/ubi8/nodejs-20
@@ -64,34 +53,39 @@ spec:
         #!/bin/sh
         set -e
         export HOME=/workspace/shared-home
-        export PATH="$HOME/.npm-global/bin:$PATH"
-        /workspace/shared-home/npm-global/bin/anypoint-cli-v4 --help
+        export PATH="/workspace/shared-home/npm-global/bin:$PATH"
+        
+        echo "🔧 Verifying Anypoint CLI"
+        echo "npm-global"
+        ls -la /workspace/shared-home
+        echo "npm-global"
+        ls -la /workspace/shared-home/npm-global/
+         echo ".npm"
+        ls -la /workspace/shared-home/.npm/
+        /workspace/shared-home/.npm/bin/anypoint-cli-v4 --version || echo "Not found!"
 
-        echo "Rust installation step"
-        echo "🔧 Using custom CA cert"
+        echo "🛠 Installing curl and git"
+        microdnf install -y curl git ca-certificates
+
+        echo "🌐 Configuring custom CA (if needed)"
         export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
 
-        if ! command -v rustc &> /dev/null
-        then
-          echo "Rust could not be found, installing it..."
-          # Install Rust non-interactively
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-          # Source the Rust environment (non-interactive)
-          source $HOME/.cargo/env
-        fi
-        echo "✅ Rust: $(rustc --version)"
+        echo "⬇️ Installing Rust"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        . "$HOME/.cargo/env"
+
+        rustc --version
         rustup default 1.83.0
-        echo "Rust version 1.8.3 set"
         rustup target add wasm32-wasi
-        echo "Rust WASI set"
         cargo install --locked cargo-generate@0.22.0
 
-        echo "Cargo installed"
+        echo "🌍 Anypoint CLI configuration"
         export ANYPOINT_HOST=eu1.anypoint.mulesoft.com
-        anypoint-cli-v4 conf client_id bb7bbc355f4041cbb7416ffe0fc8e39a
-        anypoint-cli-v4 conf client_secret 32D680f253334186a2181A831d21C7A8
-        anypoint-cli-v4 conf organization 847916b2-61a8-475f-919b-35cfcddb88e4
+        anypoint-cli-v4 conf client_id bbAZAZ
+        anypoint-cli-v4 conf client_secret 3ZAZAz
+        anypoint-cli-v4 conf organization 8ZAZAZAZ
         anypoint-cli-v4 account:environment:list
+
       volumeMounts:
         - name: custom-ca
           mountPath: /etc/ssl/custom-ca
@@ -103,7 +97,6 @@ spec:
     - name: custom-ca
       configMap:
         name: rust-certificate
-
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -125,10 +118,10 @@ kind: PipelineRun
 metadata:
   name: tools-install-run
 spec:
-  taskRunTemplate:
-        serviceAccountName: sa-docker
   pipelineRef:
     name: tools-install-pipeline
+  taskRunTemplate:
+    serviceAccountName: sa-docker
   workspaces:
     - name: shared-home
       persistentVolumeClaim:

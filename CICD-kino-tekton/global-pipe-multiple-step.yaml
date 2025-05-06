@@ -1,21 +1,8 @@
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: pvc-large-storage
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: install-tools
 spec:
-  workspaces:
-    - name: shared-home
   steps:
     - name: setup-and-install
       # image: node:18
@@ -25,22 +12,13 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        export HOME=/workspace/shared-home
+        export HOME=/tekton/home
         
         echo "npm installation step"
         # Set npm global path to writable directory
-        echo "ls du dossier courant"
-        ls .
-        echo "ls /workspace/shared-home"
-        ls /workspace/shared-home
-        cd /workspace/shared-home/
-        echo "creation du cd /workspace/shared-home/npm-global"
-        mkdir npm-global
-        echo "ls après creation"
-        ls .
-        cd ../..
-        npm config set prefix /workspace/shared-home/npm-global
-        export PATH="$HOME/npm-global/bin:$PATH"
+        mkdir -p "$HOME/.npm-global"
+        npm config set prefix "$HOME/.npm-global"
+        export PATH="$HOME/.npm-global/bin:$PATH"
 
         # Install Anypoint CLI
         npm install -g anypoint-cli-v4
@@ -59,15 +37,13 @@ spec:
         echo "✅ Anypoint CLI: $(anypoint-cli-v4 --version)"
 
     - name: install-rust
-      image: registry.access.redhat.com/ubi8/nodejs-20
+#      image: registry.access.redhat.com/ubi8/nodejs-20
       script: |
         #!/bin/sh
         set -e
-        export HOME=/workspace/shared-home
-        export PATH="$HOME/.npm-global/bin:$PATH"
-        /workspace/shared-home/npm-global/bin/anypoint-cli-v4 --help
-
+        export HOME=/tekton/home  
         echo "Rust installation step"
+
         echo "🔧 Using custom CA cert"
         export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
 
@@ -110,15 +86,11 @@ kind: Pipeline
 metadata:
   name: tools-install-pipeline
 spec:
-  workspaces:
-    - name: shared-home
   tasks:
     - name: install-all
       taskRef:
         name: install-tools
-      workspaces:
-        - name: shared-home
-          workspace: shared-home
+
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -129,7 +101,3 @@ spec:
         serviceAccountName: sa-docker
   pipelineRef:
     name: tools-install-pipeline
-  workspaces:
-    - name: shared-home
-      persistentVolumeClaim:
-        claimName: pvc-large-storage
