@@ -99,3 +99,14 @@ Création de la CI sur Rust
     "openssl s_client -showcerts -servername sh.rustup.rs -connect sh.rustup.rs:443"
   Créer la configmap avec tous les certificat 
    "oc create configmap rust-certificate --from-file=ca.crt=rust-certificate.pem"
+
+- Adding CArgo and Web WASI
+rustup target add wasm32-wasi
+cargo install --locked cargo-generate
+
+
+-- To delete Task and Pipeline 
+oc delete task install-tools && oc delete pipeline tools-install-pipeline && oc delete pipelinerun tools-install-run 
+
+--- To Create pipeline 
+oc apply -f global-image-custom.yaml  

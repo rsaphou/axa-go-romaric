@@ -21,19 +21,18 @@ spec:
         mkdir -p ~/.npm-global
         npm config set prefix '~/.npm-global'
         export PATH="$HOME/.npm-global/bin:$PATH"
-        echo "🔧 Using custom CA cert"
-        export SSL_CERT_FILE=/etc/ssl/custom-ca/ca.crt
         npm install -g anypoint-cli-v4
         anypoint-cli --version
-      volumeMounts:
-        - name: custom-ca
-          mountPath: /etc/ssl/custom-ca
-          readOnly: true
-      env:
-        - name: SSL_CERT_FILE
-          value: /etc/ssl/custom-ca/ca.crt
 
+    - name: install-rust
+      image: debian:bullseye-slim
+      script: |
+        #!/bin/sh
+        apt-get update && apt-get install -y curl build-essential
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        . "$HOME/.cargo/env"
+        rustc --version
   volumes:
     - name: custom-ca
       configMap:
-        name: rust-certificate
+        name: my-custom-ca

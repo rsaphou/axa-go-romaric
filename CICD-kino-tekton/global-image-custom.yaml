@@ -41,6 +41,24 @@ spec:
       anypoint-cli-v4 conf client_secret 32D680f253334186a2181A831d21C7A8
       anypoint-cli-v4 conf organization 847916b2-61a8-475f-919b-35cfcddb88e4
       anypoint-cli-v4 account:environment:list
+
+      mkdir -p $HOME/git
+      cd $HOME/git
+      git clone https://github.com/rsaphou/axa-go-cost-pol-message-logging.git
+      cd axa-go-cost-pol-message-logging
+      
+      export ANYPOINT_HOST=anypoint.mulesoft.com
+      export ANYPOINT_ORG=c4c35be9-c141-4844-8bb1-85837fdd7ec1
+      export ANYPOINT_CLIENT_SECRET=51dbc3225403412a9453D45964fd349D
+      export ANYPOINT_CLIENT_ID=30bed11cfb57435687273d593ea2e3ea
+
+      anypoint-cli-v4 conf client_id 30bed11cfb57435687273d593ea2e3ea
+      anypoint-cli-v4 conf client_secret 51dbc3225403412a9453D45964fd349D
+      anypoint-cli-v4 conf organization c4c35be9-c141-4844-8bb1-85837fdd7ec1
+      anypoint-cli-v4 conf host anypoint.mulesoft.com
+      make setup
+      make build
+      make publish
     volumeMounts:
       - name: custom-ca
         mountPath: /etc/ssl/custom-ca

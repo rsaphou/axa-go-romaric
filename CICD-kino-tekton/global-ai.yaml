@@ -21,7 +21,7 @@ spec:
       image: registry.access.redhat.com/ubi8/nodejs-20
       script: |
         #!/bin/sh
-
+        set -e
         export HOME=/workspace/shared-home
 
         echo "📁 Listing shared-home contents:"
