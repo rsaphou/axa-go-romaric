@@ -40,7 +40,6 @@ spec:
 #      image: registry.access.redhat.com/ubi8/nodejs-20
       script: |
         #!/bin/sh
-        set -e
         export HOME=/tekton/home  
         echo "Rust installation step"
 

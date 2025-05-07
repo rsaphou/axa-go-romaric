@@ -8,10 +8,12 @@ spec:
     image: image-registry.openshift-image-registry.svc:5000/pipeline-axa-pdk/node-anypoint-cli
     script: |
       #!/bin/sh
-      anypoint-cli-v4 plugins:install anypoint-cli-pdk-plugin
-      anypoint-cli-v4 --version
-      
+      set -e
       export HOME=/tekton/home  
+      anypoint-cli-v4 --version
+
+      anypoint-cli-v4 plugins:install anypoint-cli-pdk-plugin
+      
       echo "Rust installation step"
 
       echo "🔧 Using custom CA cert"
@@ -23,8 +25,9 @@ spec:
         # Install Rust non-interactively
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
         # Source the Rust environment (non-interactive)
-        source $HOME/.cargo/env
+        . $HOME/.cargo/env
       fi
+      . $HOME/.cargo/env
       echo "✅ Rust: $(rustc --version)"
       rustup default 1.83.0
       echo "Rust version 1.8.3 set"
