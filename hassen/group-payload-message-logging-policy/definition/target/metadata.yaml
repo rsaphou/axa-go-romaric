@@ -1,0 +1,7 @@
+#%Policy Definition 0.1
+name: Group Payload Message Logging Policy
+category: compliance
+providedCharacteristics: []
+interfaceScope:
+  - api
+  - resource

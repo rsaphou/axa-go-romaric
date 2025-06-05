@@ -1,0 +1,14 @@
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Extension
+metadata:
+  labels:
+    title: Group Payload Message Logging Policy
+    category: compliance
+    metadata/interfaceScope: api,resource
+    pdk.mulesoft.com/pdk-cli-version: 1.2.0
+  name: group-payload-message-logging-policy-v1-0
+spec:
+  extends:
+    - name: extension-definition
+      namespace: default

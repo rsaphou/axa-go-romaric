@@ -1,0 +1,6 @@
+{
+  "title": "Group Payload Message Logging Policy",
+  "type": "object",
+  "$id": "group-payload-message-logging-policy",
+  "$schema": "https://json-schema.org/draft/2019-09/schema"
+}
