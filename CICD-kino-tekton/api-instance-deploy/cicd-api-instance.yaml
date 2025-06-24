@@ -1,0 +1,80 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: get-token
+spec:
+  results:
+    - name: access-token
+      description: "Anypoint Access Token"
+  steps:
+  - name: get-token
+    image: python:3.11
+    script: |
+        #!/usr/bin/env python3
+        import subprocess
+        subprocess.run(["pip", "install", "requests"], check=True)
+        import requests
+        body_token = {"client_id": "bb7bbc355f4041cbb7416ffe0fc8e39a","client_secret": "32D680f253334186a2181A831d21C7A8","grant_type": "client_credentials"}
+        headers_token = {"Content-Type": "application/x-www-form-urlencoded"}
+        resp1 = requests.post("https://eu1.anypoint.mulesoft.com/accounts/api/v2/oauth2/token", data=body_token, headers=headers_token)
+        data1 = resp1.json()
+        token = data1.get("access_token")
+        print ("Hello world")
+        print("API 1 result:", token)
+        with open("/tekton/results/access-token", "w") as f:
+            f.write(token)
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: get-gateway
+spec:
+  params:
+    - name: access-token
+      description: "Token for API auth"
+  steps:
+    - name: get-gateway
+      image: python:3.11
+      script: |
+        #!/usr/bin/env python3
+        import subprocess
+        subprocess.run(["pip", "install", "requests"], check=True)
+        import requests
+        import os
+
+        token = os.environ["TOKEN"]
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.get("https://eu1.anypoint.mulesoft.com/gatewaymanager/api/v1/organizations/847916b2-61a8-475f-919b-35cfcddb88e4/environments/0bb23ad2-640f-44bd-aac9-2ee67b05b65f/gateways", headers=headers)
+        print("API response:", response.json())
+      env:
+        - name: TOKEN
+          value: $(params.access-token)
+
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: tools-install-pipeline
+spec:
+  tasks:
+    - name: get-token-task
+      taskRef:
+        name: get-token
+
+    - name: get-gateway-task
+      runAfter: [get-token-task]
+      taskRef:
+        name: get-gateway
+      params:
+        - name: access-token
+          value: $(tasks.get-token-task.results.access-token)
+          
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: tools-install-run
+spec:
+  pipelineRef:
+    name: tools-install-pipeline
