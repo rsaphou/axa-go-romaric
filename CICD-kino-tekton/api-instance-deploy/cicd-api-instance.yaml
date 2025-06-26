@@ -53,6 +53,36 @@ spec:
 
 ---
 apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: promote-api-instance
+spec:
+  params:
+    - name: access-token
+      description: "Promote an API Instance"
+  steps:
+    - name: promote-api-instance
+      image: python:3.11
+      script: |
+        #!/usr/bin/env python3
+        import subprocess
+        subprocess.run(["pip", "install", "requests"], check=True)
+        import requests
+        import os
+        import json
+
+        token = os.environ["TOKEN"]
+        headers = {"Authorization": f"Bearer {token}", "Content-type" : "application/json"}
+        apiinstance = { "instanceLabel":"CI-Promoted Instance API", "promote":{ "originApiId": 2568980,"policies":{"allEntities":True},"tiers":{"allEntities":True},"alerts":{"allEntities":True}}}
+        json_payload = json.dumps(apiinstance)
+        response = requests.post("https://eu1.anypoint.mulesoft.com/apimanager/api/v1/organizations/847916b2-61a8-475f-919b-35cfcddb88e4/environments/f1c1a4d5-d9fd-4985-8eb0-a6acbea67a52/apis", headers=headers, data=json_payload)
+        print("API response:", response.json())
+      env:
+        - name: TOKEN
+          value: $(params.access-token)
+
+---
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: tools-install-pipeline
@@ -66,6 +96,14 @@ spec:
       runAfter: [get-token-task]
       taskRef:
         name: get-gateway
+      params:
+        - name: access-token
+          value: $(tasks.get-token-task.results.access-token)
+
+    - name: promote-api-instance-task
+      runAfter: [get-token-task]
+      taskRef:
+        name: promote-api-instance
       params:
         - name: access-token
           value: $(tasks.get-token-task.results.access-token)
