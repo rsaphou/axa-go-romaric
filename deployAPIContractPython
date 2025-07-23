@@ -1,0 +1,25 @@
+  #!/bin/sh
+        echo "Git Clone"
+        git clone https://apim/axago.apim.gtw.api-contract.git
+        echo "Git Clone done"
+        ls
+        cd axago.apim.gtw.api-contract
+        echo "Contenu du repository :"
+        ls 
+        echo "Deploiement du Contract d'API"
+        cat <<EOF>> /tmp/script.py
+        import requests
+        import os
+        token = os.environ["TOKEN"]
+        files={"file": ("files.oas.yaml", open("weather-ci-api.yaml", "rb"), "text/plain") }
+        data={"type": "rest-api", 
+            "status": "published",
+            "properties.apiVersion": "v1", 
+            "properties.mainFile": "weather-ci-api.yaml",
+            "name": "weather-api-demo-tekton"
+           }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "multipart/form-data"}
+        response = requests.post("https://anypoint.mulesoft.com/exchange/api/v2/organizations//weather-api-demo-tekton/1.0.0", data=data, files=files, headers=headers)
+        print("API response:", response.json())
+        EOF
+        python /tmp/script.py
