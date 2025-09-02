@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "group_message_logging_policy"
-version = "1.0.7"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "chrono",

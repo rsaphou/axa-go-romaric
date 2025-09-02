@@ -4,22 +4,43 @@ apiVersion: gateway.mulesoft.com/v1alpha1
 kind: ApiInstance
 metadata:
   name: ingress-http
-  namespace: gateway
 
 spec:
   address: http://0.0.0.0:8084
   services:
     upstream:
-      address: http://host.docker.internal:8087
+      #address: http://sse.dev
+      #address: http://host.docker.internal:8088
+      address: https://petstore.swagger.io/v2/pet
       routes:
         - config:
             destinationPath: /
   policies:
     - policyRef:
         name: group-message-logging-policy-v1-0-impl
+          # Fill the config with a policy configuration that matches the schema specified in the policy
+          # definition gcl.yaml. Eg:
+          # config:
+          #   someProperty: desiredValue
         namespace: default
-      # Fill the config with a policy configuration that matches the schema specified in the policy
-      # definition gcl.yaml. Eg:
-      # config:
-      #   someProperty: desiredValue
-      config: {}
+
+# ---
+# apiVersion: gateway.mulesoft.com/v1alpha1
+# kind: PolicyBinding
+# metadata:
+#   name: message-logging-flex
+#   namespace: gateway
+# spec:
+#   targetRef:
+#     name: ingress-http
+#   policyRef:
+#     name: message-logging-flex
+#     namespace: default
+#   config:
+#     loggingConfiguration:
+#       - itemName: "Config 1"
+#         itemData:
+#           message: "#[payload]"
+#           level: "DEBUG"
+#           firstSection: true
+#           secondSection: true

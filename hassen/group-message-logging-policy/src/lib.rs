@@ -101,7 +101,6 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
         //"port":port
 });
     Flow::Continue(request_data_value.to_string())
-    
 }
 
 
@@ -123,6 +122,7 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         level_val = "ERROR";
         let response_body_state = headers_state.into_body_state().await;
         let get_body_bytes = response_body_state.handler().body().len();
+        //We want to trace the Body content in Error case
         body_content = String::from_utf8_lossy(&response_body_state.handler().body()).to_string();
         body_bytes = get_body_bytes.to_string();
     }else{
@@ -139,9 +139,9 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         log_data = json!({
             "http.response.mime_type": response_content_type,
             "http.response.status_code": response_status,
-            "error.code": response_error,
+            //"error.code": response_error,
             "http.response.body.bytes": body_bytes,
-            "level": level_val,
+            //"level": level_val,
             "http.response.body.content":body_content
          });
       }else{
@@ -149,11 +149,11 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         log_data = json!({
             "http.response.mime_type": response_content_type,
             "http.response.status_code": response_status,
-            "error.code": response_error,
+            //"error.code": response_error,
             "event.end": formatted_end_time,
             "event.duration": response_time,
             "http.response.body.bytes": body_bytes,
-            "level": level_val
+            //"level": level_val
          });
       }
       
@@ -173,8 +173,6 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
     } else {
         return;
     };
-
-    
 }
 
 
