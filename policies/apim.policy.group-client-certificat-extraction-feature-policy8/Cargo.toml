@@ -1,0 +1,36 @@
+# Copyright 2023 Salesforce, Inc. All rights reserved.
+[package]
+name = "group_client_certificate_extraction"
+version = "1.0.0"
+rust-version = "1.87.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package.metadata.anypoint]
+group_id = "c4c35be9-c141-4844-8bb1-85837fdd7ec1"
+definition_asset_id = "group-client-certificate-extraction"
+implementation_asset_id = "group-client-certificate-extraction-flex"
+
+[dependencies]
+pdk = { version = "1.4.0", registry = "anypoint" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+anyhow = "1.0"
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+pdk-test = { version = "1.4.0", registry = "anypoint" }
+tokio = { version = "1", features = ["macros", "rt", "test-util"] }
+httpmock = "0.6"
+reqwest = "0.11"
+
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+opt-level = 'z'
+strip = "debuginfo"
