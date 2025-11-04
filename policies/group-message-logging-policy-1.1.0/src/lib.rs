@@ -1,5 +1,6 @@
 //Working without error
 mod generated;
+mod utils;
 use anyhow::{anyhow, Result};
 use pdk::hl::*;
 use pdk::logger;
@@ -13,21 +14,16 @@ use pdk::jwt::JWTClaimsParser;
 use pdk::jwt::TokenProvider;
 use regex::Regex;
 use url::Url;
+use crate::utils::vec_u8_to_int;
+use crate::utils::get_content_body_and_length;  
+use crate::utils::get_content_length;
+use crate::utils::HeadersType;
+use crate::utils::MAX_BUFFER_SIZE;
+
+// /* Size by default for the Buffer  */
+// const MAX_BUFFER_SIZE: usize = 1_000_000; // 1 Mo
 
 
-
-fn vec_u8_to_int(vec: Vec<u8>) -> i64 {
-    let mut num : i64 = 0;
-    let mut base : i64 = 1;
-    if vec.len() > 0 {
-        for i in 0..(vec.len()-1)
-        {
-            num = num + (base * (vec[i] as i64));
-            base = base * 256;
-        }
-    }else{};
-    num
-}
 async fn request_filter(request_state: RequestState, _config: &Config, metadata: &Metadata, stream: StreamProperties) -> Flow<String> {
     let headers_state = request_state.into_headers_state().await;
     
@@ -44,14 +40,11 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
         if token.is_err() {
             
         } else {
-            
             let parsed_claims = JWTClaimsParser::parse(token.unwrap());
-            
             if parsed_claims.is_err() {
-                
+              
             } else {
                 let claims = parsed_claims.unwrap();
-                
                 client_id = claims.get_claim("client_id");
                 scope = claims.get_claim("scope");
                 audience = claims.get_claim("aud");
@@ -64,7 +57,9 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
             }
         }
     }else {}
-    
+
+    let x_axa_client_id = headers_state.handler().header("x-axa-client-id ").unwrap_or_default();
+
     let start_time: DateTime<Local> = Local::now();
     let formatted_start_time = start_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string();
     let path = headers_state.path();
@@ -90,26 +85,28 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
     
 	let tls_version = String::from_utf8(stream.read_property(&["connection", "tls_version"]).unwrap_or_default()).unwrap_or_default();
     let trace_id = String::from_utf8(stream.read_property(&["request", "id"]).unwrap_or_default()).unwrap_or_default();
-    let source_port = String::from_utf8(stream.read_property(&["source", "port"]).unwrap_or_default()).unwrap_or_default();
+    //let source_port = String::from_utf8(stream.read_property(&["source", "port"]).unwrap_or_default()).unwrap_or_default();
+    let source_port =  vec_u8_to_int(stream.read_property(&["source", "port"]).unwrap_or_default());
     let destination_port = String::from_utf8(stream.read_property(&["destination", "port"]).unwrap_or_default()).unwrap_or_default();
     let request_header = String::from_utf8(stream.read_property(&["request", "headers"]).unwrap_or_default()).unwrap_or_default();
 	
+    // Compute the content-length from headers
+    let mut content_length = headers_state.handler().header("Content-Length").unwrap_or_default();
+     if content_length.is_empty() {
+        // if Content-lenght header is empty, we process as stream and count each chunk size
+        content_length = get_content_length(HeadersType::RequestHeaders(headers_state)).await;
+        // End of compting body size
+    }
+    else {
+        logger::debug!("Request payload size from header Content-Length: {} kb ", content_length);
+    }   
+
     let request_data_value = json!({ 
         "http.request.referrer": modified_url,
-        //"url.domain": url,
-        //"url.path": path,
-        //"http.request.method": method,
-        //"http.response.mime_type": request_content_type,
         "client.user.id": client_id,
         "url.query": query_string,
-        //"api.id": metadata.api_metadata.id.clone().unwrap(),
-        //"api.name": metadata.api_metadata.name.clone().unwrap(),
-        //"api.label": metadata.api_metadata.version.clone().unwrap(),
         "api.label": label,
-        //"api.version": version,
-        //"user_agent.original": user_agent,
         "event.start": formatted_start_time,
-        //"http.request.body.bytes": body_bytes,
         "client.user.jwt.scope": scope,
         "client.user.jwt.audience": audience,
         "client.user.jwt.issuer": issuer,
@@ -117,52 +114,67 @@ async fn request_filter(request_state: RequestState, _config: &Config, metadata:
 		"tls.version": tls_version,
         "traceId": trace_id,
         "source_port":source_port,
-        "destination_port": destination_port
-        //"port":port
+        "destination_port": destination_port,
+        "http.request.body.bytes":content_length,
+        "x-axa-client-id": x_axa_client_id
 });
     Flow::Continue(request_data_value.to_string())
 }
 
 
 async fn response_filter(response_state: ResponseState, _config: &Config, request_data: RequestData<String>, metadata: &Metadata, stream: StreamProperties) {
+    
     let end_time: DateTime<Local> = Local::now();
-
-
     let formatted_end_time = end_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string();
     let headers_state = response_state.into_headers_state().await;
     let response_content_type = headers_state.handler().header("content-type").unwrap_or_default();
+    let content_length = headers_state.handler().header("Content-Length").unwrap_or_default();
     let response_status = headers_state.status_code();
-    //let rate_limit = headers_state.handler().header("x-ratelimit-remaining").unwrap_or_default();
     let response_time = headers_state.handler().header("x-envoy-upstream-service-time").unwrap_or_default();
-    let duration_upstream = String::from_utf8(stream.read_property(&["response", "backend_latency"]).unwrap_or_default()).unwrap_or_default();
-	//let size = String::from_utf8(stream.read_property(&["response", "size"]).unwrap_or_default()).unwrap_or_default();
-	let size_ = vec_u8_to_int(stream.read_property(&["response", "total_size"]).unwrap_or_default());
-    let duration = vec_u8_to_int(stream.read_property(&["request", "duration"]).unwrap_or_default());
     let duration_prop = stream.read_property(&["response", "backend_latency"]).unwrap_or_default();
-
-    // Display the backend latency
-    log::info!("Backend Latency: {:?}", duration);
-
     let v_destinaltion_port =  vec_u8_to_int(stream.read_property(&["destination", "port"]).unwrap_or_default());
-    
+
     let mut level_val: &str = "INFO";
     let mut response_error = String::new();
     let mut body_bytes = String::new();
     let mut body_content = String::new();
+
     if !response_status.to_string().starts_with("20") {
         response_error = response_status.to_string();
         level_val = "ERROR";
-        let response_body_state = headers_state.into_body_state().await;
-        let get_body_bytes = response_body_state.handler().body().len();
-        //We want to trace the Body content in Error case
-        body_content = String::from_utf8_lossy(&response_body_state.handler().body()).to_string();
-        body_bytes = get_body_bytes.to_string();
+        if content_length.is_empty() {
+            //if Content-lenght header is empty, we process as stream and count each chunk size
+            let (bytes, content) = get_content_body_and_length(HeadersType::ResponseHeaders(headers_state)).await;
+            body_bytes = bytes;
+            body_content = content;
+            logger::debug!("Response payload size streamed: {} kb , content {}", body_bytes, body_content);
+            // End of compting body size    
+        }
+            else {
+                body_bytes = content_length;
+                let size = body_bytes.parse::<usize>().unwrap_or(usize::MAX);
+                if size < MAX_BUFFER_SIZE{
+                    let response_body_state = headers_state.into_body_state().await;
+                    body_content = String::from_utf8_lossy(&response_body_state.handler().body()).to_string();
+                } else {
+                    // If content-length is greater than MAX_BUFFER_SIZE, we do nothing, by default the buffer is set to 1 MB
+                    body_content = String::from("Body content too large to be captured");
+                }
+                logger::debug!("Response payload size from header Content-Length: {} kb ", body_bytes);
+            }   
     }else{
         level_val = "INFO";
-        // let response_body_state = headers_state.into_body_state().await;
-        // let get_body_bytes = response_body_state.handler().body().len();
-        // body_bytes = get_body_bytes.to_string();
-    }
+        if content_length.is_empty() {
+            //if Content-lenght header is empty, we process as stream and count each chunk size
+            body_bytes = get_content_length(HeadersType::ResponseHeaders(headers_state)).await;
+            logger::debug!("Response payload size streamed: {} kb ", body_bytes);
+            // End of compting body size    
+        }
+            else {
+                body_bytes = content_length;
+                logger::debug!("Response payload size from header Content-Length: {} kb ", body_bytes);
+            }   
+        }
 
     if let RequestData::Continue(request_data_value) = request_data {
       let log_data;
@@ -171,9 +183,9 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         log_data = json!({
             "http.response.mime_type": response_content_type,
             "http.response.status_code": response_status,
-            //"error.code": response_error,
             "http.response.body.bytes": body_bytes,
-            //"level": level_val,
+            "event.duration_upstream":response_time,
+            "source_port" : v_destinaltion_port,
             "http.response.body.content":body_content
          });
       }else{
@@ -181,16 +193,12 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         log_data = json!({
             "http.response.mime_type": response_content_type,
             "http.response.status_code": response_status,
-            //"error.code": response_error,
             "event.end": formatted_end_time,
-            "event.duration": duration,
             "event.duration_upstream":response_time,
             "source_port" : v_destinaltion_port,
-            "http.response.body.bytes": size_
-            //"level": level_val
+            "http.response.body.bytes": body_bytes
          });
       }
-      
     let request_data_string: Value = serde_json::from_str(&request_data_value).unwrap();
     let mut combined_json = request_data_string.as_object().unwrap().clone();
 
@@ -207,7 +215,6 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
         return;
     };
 }
-
 
 
 #[entrypoint]

@@ -17,11 +17,7 @@ spec:
             destinationPath: /
   policies:
     - policyRef:
-        name: group-message-logging-policy-v1-0-impl
-          # Fill the config with a policy configuration that matches the schema specified in the policy
-          # definition gcl.yaml. Eg:
-          # config:
-          #   someProperty: desiredValue
+        name: group-message-logging-policy-v1-1-impl
         namespace: default
 
 # ---
