@@ -19,7 +19,7 @@ pub enum HeadersType {
     ResponseHeaders(ResponseHeadersState),
 }
 /* Size by default for the Buffer  */
-pub const MAX_BUFFER_SIZE: usize = 1_000_000; // 1 Mo
+pub const MAX_BUFFER_SIZE: usize = 1000_000; // 1 Mo
 
 
 pub fn vec_u8_to_int(vec: Vec<u8>) -> i64 {
@@ -110,20 +110,27 @@ pub async fn get_content_body_and_length(headers_state: HeadersType) -> (String,
 
     match headers_state {
         HeadersType::RequestHeaders(state) => {
+            
+            state.handler().remove_header("content-lenght");
             let body_stream_state = state.into_body_stream_state().await;
             let mut body_as_stream = body_stream_state.stream();
+            
+            //headers_handler.remove_header("content-length");
             logger::debug!("Body stream processing for content and length...");
             
             while let Some(chunk) = body_as_stream.next().await {
+                 logger::debug!("....Reading chunk...");
                 let chunk_bytes = chunk.into_bytes();
                 let chunk_size = chunk_bytes.len();
                 total_size += chunk_size;
                 
                 if buffer.len() < MAX_BUFFER_SIZE {
+                    logger::debug!("....Adding chunk to buffer... {}", chunk_size);
                     // Calculate remaining space in buffer
                     let remaining_space = MAX_BUFFER_SIZE - buffer.len();
+                    logger::debug!("Remaining space in buffer: {}", remaining_space);
                     let bytes_to_add = chunk_size.min(remaining_space);
-                    
+                    logger::debug!("Bytes to add from chunk: {}", bytes_to_add);
                     // Only add what fits
                     buffer.extend_from_slice(&chunk_bytes[..bytes_to_add]);
                     logger::debug!("Chunk added to body content, current size: {}", buffer.len());
@@ -142,16 +149,19 @@ pub async fn get_content_body_and_length(headers_state: HeadersType) -> (String,
             let mut body_as_stream = body_stream_state.stream();
             logger::debug!("Body stream processing for content and length...");
             
-            while let Some(chunk) = body_as_stream.next().await {
+             while let Some(chunk) = body_as_stream.next().await {
+                 logger::debug!("....Reading chunk...");
                 let chunk_bytes = chunk.into_bytes();
                 let chunk_size = chunk_bytes.len();
                 total_size += chunk_size;
                 
                 if buffer.len() < MAX_BUFFER_SIZE {
+                    logger::debug!("....Adding chunk to buffer... {}", chunk_size);
                     // Calculate remaining space in buffer
                     let remaining_space = MAX_BUFFER_SIZE - buffer.len();
+                    logger::debug!("Remaining space in buffer: {}", remaining_space);
                     let bytes_to_add = chunk_size.min(remaining_space);
-                    
+                    logger::debug!("Bytes to add from chunk: {}", bytes_to_add);
                     // Only add what fits
                     buffer.extend_from_slice(&chunk_bytes[..bytes_to_add]);
                     logger::debug!("Chunk added to body content, current size: {}", buffer.len());
@@ -166,7 +176,9 @@ pub async fn get_content_body_and_length(headers_state: HeadersType) -> (String,
             }
         }
     }
+    
     let body_content = String::from_utf8_lossy(&buffer).to_string();
+    buffer.clear();
     logger::debug!("Streaming finished. Total size: {}, Buffered: {}", total_size, buffer.len());
     
     (total_size.to_string(), body_content)

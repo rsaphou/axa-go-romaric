@@ -15,16 +15,20 @@ use crate::utils::MAX_BUFFER_SIZE;
 
 async fn request_filter(request_state: RequestState, _config: &Config, _metadata: &Metadata, stream: StreamProperties) -> Flow<(Option<String>, Option<String>, String)> {
     // Get trace ID
-    let trace_id = String::from_utf8(stream.read_property(&["request", "id"]).unwrap_or_default()).unwrap_or_default();
+    let mut trace_id = String::from_utf8(stream.read_property(&["request", "id"]).unwrap_or_default()).unwrap_or_default();
     let headers_state = request_state.into_headers_state().await;
+    
     let mut body_bytes = String::new();
     let mut body_content = String::new();
+    let mut log_data = json!({});
     // Get request body content and message
     //let body_state = headers_state.into_body_state().await;
     
     let (bytes, content) = get_content_body_and_length(HeadersType::RequestHeaders(headers_state)).await;
     body_bytes = bytes;
     body_content = content;
+    //TODO remove it only if the payload is too large
+    //headers_handler.remove_header("content-length");
     logger::debug!("Request body bytes length: {}", body_bytes.to_string());
     logger::debug!("Request body content :  {}", body_content.len());
     //let body_content = String::from_utf8_lossy(&body_state.handler().body()).to_string();
@@ -33,6 +37,9 @@ async fn request_filter(request_state: RequestState, _config: &Config, _metadata
     } else {
         None
     };
+    log_data.as_object_mut().unwrap().insert("traceId".to_string(), serde_json::Value::String(trace_id.clone()));
+    log_data.as_object_mut().unwrap().insert("http.request.body.content".to_string(), Value::String(body_content.clone()));
+    logger::info!("[accessLog] {}", log_data);
     Flow::Continue((Some(body_content), body_message, trace_id))
 }
 
@@ -49,22 +56,22 @@ async fn response_filter(response_state: ResponseState, _config: &Config, reques
        // log_data.as_object_mut().unwrap().insert("http.request.body.content".to_string(), Value::String(content));
 
         // Add body content and message with appropriate field names based on error status
-        if let Some(content) = body_content {
-            //if has_error {
-            //    log_data.as_object_mut().unwrap().insert("error.body.content".to_string(), Value::String(content));
-           // } else {
-                logger::debug!("Logging request body content of length: {}", content.len());
-                log_data.as_object_mut().unwrap().insert("http.request.body.content".to_string(), Value::String(content));
-            //}
-        }
-        if let Some(message) = body_message {
-         //   if has_error {
-          //      log_data.as_object_mut().unwrap().insert("error.body.message".to_string(), Value::String(message));
-           // } else {
-                logger::debug!("Logging request body message: {}", message.len());
-                log_data.as_object_mut().unwrap().insert("http.request.body.message".to_string(), Value::String(message));
-            //}
-        }
+        // if let Some(content) = body_content {
+        //     //if has_error {
+        //     //    log_data.as_object_mut().unwrap().insert("error.body.content".to_string(), Value::String(content));
+        //    // } else {
+        //         logger::debug!("Logging request body content of length: {}", content.len());
+        //         log_data.as_object_mut().unwrap().insert("http.request.body.content".to_string(), Value::String(content));
+        //     //}
+        // }
+        // if let Some(message) = body_message {
+        //  //   if has_error {
+        //   //      log_data.as_object_mut().unwrap().insert("error.body.message".to_string(), Value::String(message));
+        //    // } else {
+        //         logger::debug!("Logging request body message: {}", message.len());
+        //         log_data.as_object_mut().unwrap().insert("http.request.body.message".to_string(), Value::String(message));
+        //     //}
+        // }
         // Process the response body
         // Verify if content length > 1M 
         if content_length.parse::<i32>().unwrap() > 1_000_000 {
