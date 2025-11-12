@@ -1,0 +1,13 @@
+# Copyright 2023 Salesforce, Inc. All rights reserved.
+version: "3.3"
+
+services:
+  local-flex:
+    image: mulesoft/flex-gateway:1.10.0
+    environment:
+        - "FLEX_ENVOY_HEADERS_ENABLED=true"
+        - "FLEX_DOWNSTREAM_CONNECTION_BUFFER_LIMIT_BYTES=50000000"
+    ports:
+      - 8083:8083
+    volumes:
+      - ./config:/usr/local/share/mulesoft/flex-gateway/conf.d/
