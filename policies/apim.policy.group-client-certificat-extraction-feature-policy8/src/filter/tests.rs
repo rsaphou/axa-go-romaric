@@ -11,6 +11,21 @@ mod tests {
     }
 
     #[test]
+    fn test_tc02_show_subject_dn() {
+        let input = "C=FR,ST=Ile-de-France,L=Lyon,O=MaSociete,OU=Dev,CN=client1.local";
+        let input_2 = "CN=client1.local,OU=Dev,O=MaSociete,L=Lyon,ST=Ile-de-France,C=FR";
+        //let input = "CN=Test Client soapUI,OU=pltStage:dev,OU=axans:soa,O=axa-ch";
+        assert!(check_not_empty(input).is_ok());
+        let hash = hash_dns_value(input);
+        let hash_2 = hash_dns_value(input_2);
+       // assert_eq!(hash, "97a7629acb3be0ffd3a3689c056c2efbf8f1645aee9ccb778131b5484f03ebe3");
+        println!("Hachage SHA256 1: {}",hash);
+         println!("Hachage SHA256 2: {}",hash_2)
+    }
+
+  
+
+    #[test]
     fn test_tc02_valid_cn_domain_style() {
         let input = "cn=apix.sandbox-111094.com";
         assert!(check_not_empty(input).is_ok());

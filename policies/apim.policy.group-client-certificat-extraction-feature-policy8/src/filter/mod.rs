@@ -21,12 +21,13 @@ pub async fn request_filter(request_state: RequestState, stream: StreamPropertie
             return Flow::Break(Response::new(status_code).with_body(body));
         }
         Ok(_subject) => {        
-            let dns_value = read_property(&stream, &["connection", "dns_san_peer_certificate"]);
-            logger::debug!("Certificate content: {}", subject_str);
+            //let dns_value = read_property(&stream, &["connection", "dns_san_peer_certificate"]);
+            let dns_value = read_property(&stream, &["connection", "subject_peer_certificate"]);
+            logger::info!("Certificate content sbject dn: {}", subject_str);
 
             let hex_str = hash_dns_value(&dns_value);
             headers_handler.set_header("x-axa-cert-client-subject", &hex_str);
-            logger::debug!("Content of host_decoded: {}", hex_str);
+            logger::info!("Content of host_decoded: {}", hex_str);
 
             return Flow::Continue(())
         }

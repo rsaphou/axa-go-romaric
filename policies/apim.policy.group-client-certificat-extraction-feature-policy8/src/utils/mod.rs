@@ -11,8 +11,10 @@ pub fn read_property(stream: &StreamProperties, path: &[&str]) -> String {
 
 pub fn hash_dns_value(dns_value: &str) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(dns_value);
-    hex::encode(hasher.finalize())
+    hasher.update(dns_value.as_bytes());
+    //hex::encode(hasher.finalize())
+     let result = hasher.finalize();
+     format!("{:x}", result)
 }
 
 pub fn check_not_empty(s: &str) -> Result<(), &'static str> {
