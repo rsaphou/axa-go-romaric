@@ -1,0 +1,16 @@
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Configuration
+metadata:
+  name: forward-proxy
+spec:
+  forwardProxy:
+    https:
+      address: http://egress-http-proxy-c4e-cmn-gw1:8080
+    noProxy:   
+      - fluentd
+      - 10.96.0.1
+      - .local
+      - .cluster.local
+      - .svc.cluster.local
+      - frlow01a002770.prprivmgmt.intraxa
+      - 100.113.3.144
